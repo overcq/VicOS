@@ -1,0 +1,4 @@
+print("Welcome to VicOS! You have now entered VShell.")
+print("Hello World!")
+userCommand = ("")
+print(\userCommand\)
