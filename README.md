@@ -1,5 +1,5 @@
 # VicOS
-Open-source OS designed to be simple, lightweight, and open-source.
+Open-source OS designed to be simple, lightweight, and fit all your needs.
 
 ## ROADMAP
 
