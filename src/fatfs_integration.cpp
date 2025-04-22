@@ -1,13 +1,19 @@
 // fatfs_integration.cpp
-#include "ff.h"
-#include "diskio.h"
+
 #include <cstring>
 #include <cstdio>
 
+// VERY IMPORTANT: wrap C headers correctly
+extern "C" {
+    #include "ff.h"
+    #include "diskio.h"
+}
+
+// Define our low-level disk functions that interact with the hardware
 extern "C" {
     int disk_read_sector(unsigned long long sector, unsigned char* buffer);
     int disk_write_sector(unsigned long long sector, const unsigned char* buffer);
-    unsigned long long get_partition_info(); // Returns total number of sectors
+    unsigned long long get_partition_info();
 }
 
 // Buffer sector size

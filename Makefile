@@ -2,9 +2,10 @@ CXX = g++
 CC = gcc
 AS = nasm
 LD = ld
-# Add -fno-stack-protector to disable stack protection
-CXXFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector -I./src/fatfs
-CFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-stack-protector -I./src/fatfs
+
+# Add the custom include path before anything else
+CXXFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector -I./src -I./src/fatfs
+CFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-stack-protector -I./src -I./src/fatfs
 ASFLAGS = -f elf32
 LDFLAGS = -m elf_i386 -T linker.ld
 
@@ -67,7 +68,6 @@ $(BUILD_DIR)/keyboard.o: $(KEYBOARD_SRC)
 $(BUILD_DIR)/string_utils.o: $(STRING_UTILS_SRC)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Link everything together - Removed FatFs objects
 $(KERNEL_ELF): $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/fatfs_integration.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/string_utils.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/fatfs_integration.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/string_utils.o
 

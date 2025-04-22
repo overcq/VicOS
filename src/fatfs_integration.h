@@ -2,7 +2,7 @@
 #define FATFS_INTEGRATION_H
 
 #include <stddef.h>
-#include <stdint.h>
+#include "stdint.h"
 
 #ifdef __cplusplus
 extern "C" {

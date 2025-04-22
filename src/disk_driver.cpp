@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "stdint.h"
 #include <stddef.h>
 
 // Forward declarations
@@ -471,7 +471,7 @@ void disk_detect() {
     for (int i = 0; i < MAX_DRIVES; i++) {
         if (detected_drives[i].exists) {
             kprint("Drive ");
-            char drive_num[2] = {'0' + i, '\0'};
+            char drive_num[2] = {static_cast<char>('0' + i), '\0'};
             kprint(drive_num);
             kprint(": ");
             kprint(detected_drives[i].model);
