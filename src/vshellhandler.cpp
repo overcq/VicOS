@@ -5,7 +5,7 @@
 void kprint(const char* str);
 extern "C" void clear_screen();
 
-// Forward declarations from filesystem.cpp
+// Forward declarations from filesystem.cpp (in-memory FS)
 void fs_init();
 bool fs_cd(const char* path);
 void fs_ls(const char* path);
@@ -14,11 +14,25 @@ uint32_t fs_touch(const char* path, const char* content);
 const char* fs_read(const char* path);
 const char* fs_pwd();
 
+// Forward declarations from fatfs_integration.h
+int fatfs_initialize();
+int fatfs_mkdir(const char* path);
+void fatfs_list_directory(const char* path);
+int fatfs_write_file(const char* path, const char* content, size_t size);
+int fatfs_read_file(const char* path, char* buffer, size_t buffer_size, size_t* bytes_read);
+
 // Forward declaration from vnano.cpp
 void process_vnano(const char* command);
 
-// Forward declaration from real_installer.cpp
-void process_perm_install(const char* command);
+// Forward declaration from fatfs_installer.cpp
+void process_fatfs_install(const char* command);
+
+// Flag to indicate if we're using FatFS or the in-memory filesystem
+bool using_fatfs = false;
+
+// Buffer for file reading with FatFS
+#define MAX_FILE_BUFFER 4096
+char file_read_buffer[MAX_FILE_BUFFER];
 
 // String operations
 bool str_equals(const char* s1, const char* s2) {
@@ -102,6 +116,8 @@ void display_help() {
     kprint("  cat          - Display file contents\n");
     kprint("  vnano        - Edit files with the VNano editor\n");
     kprint("System Commands:\n");
+    kprint("  mount-fatfs  - Mount FatFS filesystem\n");
+    kprint("  umount-fatfs - Unmount FatFS, switch to RAM filesystem\n");
     kprint("  perm-install - Install VicOS to a permanent storage device\n");
 }
 
@@ -110,7 +126,11 @@ void display_about() {
     kprint("VicOS - A simple operating system\n");
     kprint("Created as a learning project\n");
     kprint("Features a basic VShell command interpreter\n");
-    kprint("and a simple in-memory filesystem\n");
+    if (using_fatfs) {
+        kprint("Currently using FatFS for persistent storage\n");
+    } else {
+        kprint("Currently using in-memory filesystem\n");
+    }
     kprint("Now with permanent installation capabilities!\n");
 }
 
@@ -118,9 +138,9 @@ void display_about() {
 void display_version() {
     kprint("VicOS version 0.3\n");
     kprint("VShell version 0.2\n");
-    kprint("Filesystem version 0.1\n");
+    kprint("Filesystem version 0.2\n");
     kprint("VNano version 0.1\n");
-    kprint("Installer version 0.1\n");
+    kprint("Installer version 0.2 (FatFS enabled)\n");
 }
 
 // Process echo command
@@ -148,11 +168,37 @@ void process_cat(const char* command) {
         return;
     }
 
-    const char* content = fs_read(filename);
-    if (content) {
-        kprint(content);
+    if (using_fatfs) {
+        // Use FatFS to read the file
+        size_t bytes_read;
+        int result = fatfs_read_file(filename, file_read_buffer, MAX_FILE_BUFFER, &bytes_read);
+
+        if (result < 0) {
+            kprint("Error: File not found or couldn't be read: ");
+            kprint(filename);
+            kprint("\n");
+            return;
+        }
+
+        // Print file content
+        kprint(file_read_buffer);
+
         // Add newline if content doesn't end with one
-        if (vsh_strlen(content) > 0 && content[vsh_strlen(content) - 1] != '\n') {
+        if (bytes_read > 0 && file_read_buffer[bytes_read - 1] != '\n') {
+            kprint("\n");
+        }
+    } else {
+        // Use in-memory filesystem
+        const char* content = fs_read(filename);
+        if (content) {
+            kprint(content);
+            // Add newline if content doesn't end with one
+            if (vsh_strlen(content) > 0 && content[vsh_strlen(content) - 1] != '\n') {
+                kprint("\n");
+            }
+        } else {
+            kprint("Error: File not found: ");
+            kprint(filename);
             kprint("\n");
         }
     }
@@ -181,13 +227,32 @@ void process_touch(const char* command) {
         content_ptr++;
     }
 
-    // Create the file
-    if (*content_ptr) {
-        // Content provided
-        fs_touch(filename, content_ptr);
+    if (using_fatfs) {
+        // Use FatFS to create/update the file
+        int result;
+        if (*content_ptr) {
+            // Content provided
+            result = fatfs_write_file(filename, content_ptr, vsh_strlen(content_ptr));
+        } else {
+            // No content, pass empty string
+            result = fatfs_write_file(filename, "", 0);
+        }
+
+        if (result < 0) {
+            kprint("Error: Failed to create/update file: ");
+            kprint(filename);
+            kprint("\n");
+            return;
+        }
     } else {
-        // No content, pass empty string
-        fs_touch(filename, "");
+        // Use in-memory filesystem
+        if (*content_ptr) {
+            // Content provided
+            fs_touch(filename, content_ptr);
+        } else {
+            // No content, pass empty string
+            fs_touch(filename, "");
+        }
     }
 
     kprint("File created/updated: ");
@@ -205,11 +270,28 @@ void process_mkdir(const char* command) {
         return;
     }
 
-    if (fs_mkdir(dirname) != (uint32_t)-1) {
-        kprint("Directory created: ");
-        kprint(dirname);
-        kprint("\n");
+    if (using_fatfs) {
+        // Use FatFS to create directory
+        int result = fatfs_mkdir(dirname);
+        if (result < 0) {
+            kprint("Error: Failed to create directory: ");
+            kprint(dirname);
+            kprint("\n");
+            return;
+        }
+    } else {
+        // Use in-memory filesystem
+        if (fs_mkdir(dirname) == (uint32_t)-1) {
+            kprint("Error: Failed to create directory: ");
+            kprint(dirname);
+            kprint("\n");
+            return;
+        }
     }
+
+    kprint("Directory created: ");
+    kprint(dirname);
+    kprint("\n");
 }
 
 // Process ls command
@@ -219,9 +301,17 @@ void process_ls(const char* command) {
 
     // If no path provided, use current directory
     if (path[0] == '\0') {
-        fs_ls(".");
+        if (using_fatfs) {
+            fatfs_list_directory(".");
+        } else {
+            fs_ls(".");
+        }
     } else {
-        fs_ls(path);
+        if (using_fatfs) {
+            fatfs_list_directory(path);
+        } else {
+            fs_ls(path);
+        }
     }
 }
 
@@ -230,19 +320,65 @@ void process_cd(const char* command) {
     char path[256];
     get_argument(command, 1, path, sizeof(path));
 
+    if (using_fatfs) {
+        // FatFS doesn't track current directory in the same way
+        // We would need to implement this separately
+        kprint("Note: When using FatFS, only absolute paths are fully supported.\n");
+    }
+
     if (path[0] == '\0') {
         // No argument, change to root
-        fs_cd("/");
+        if (!using_fatfs) {
+            fs_cd("/");
+        }
     } else {
-        fs_cd(path);
+        if (!using_fatfs) {
+            fs_cd(path);
+        }
     }
 }
 
 // Process pwd command
 void process_pwd(const char* /* command */) {
-    kprint("Current directory: ");
-    kprint(fs_pwd());
-    kprint("\n");
+    if (using_fatfs) {
+        // FatFS doesn't track current directory in the same way
+        kprint("Current directory: / (root)\n");
+    } else {
+        kprint("Current directory: ");
+        kprint(fs_pwd());
+        kprint("\n");
+    }
+}
+
+// Process mounting FatFS
+void process_mount_fatfs(const char* /* command */) {
+    if (using_fatfs) {
+        kprint("FatFS is already mounted.\n");
+        return;
+    }
+
+    kprint("Attempting to mount FatFS...\n");
+    int result = fatfs_initialize();
+
+    if (result < 0) {
+        kprint("Failed to mount FatFS. Continuing with in-memory filesystem.\n");
+        return;
+    }
+
+    using_fatfs = true;
+    kprint("FatFS mounted successfully. Now using persistent storage.\n");
+}
+
+// Process unmounting FatFS
+void process_umount_fatfs(const char* /* command */) {
+    if (!using_fatfs) {
+        kprint("FatFS is not currently mounted.\n");
+        return;
+    }
+
+    // In a more complete implementation, we would call a function to unmount FatFS
+    using_fatfs = false;
+    kprint("Switched back to in-memory filesystem.\n");
 }
 
 // Initialize VShell
@@ -251,8 +387,11 @@ void vshell_init() {
     kprint("Welcome to VicOS! You have now entered VShell.\n");
     kprint("Type 'help' for available commands.\n");
 
-    // Initialize filesystem
+    // Initialize in-memory filesystem
     fs_init();
+
+    // By default, start with in-memory filesystem
+    using_fatfs = false;
 }
 
 // Execute a command
@@ -305,7 +444,13 @@ void vshell_execute_command(const char* command) {
         process_vnano(command);
     }
     else if (str_equals(command, "perm-install")) {
-        process_perm_install(command);
+        process_fatfs_install(command);
+    }
+    else if (str_equals(command, "mount-fatfs")) {
+        process_mount_fatfs(command);
+    }
+    else if (str_equals(command, "umount-fatfs")) {
+        process_umount_fatfs(command);
     }
     else {
         kprint("Unknown command: ");

@@ -1,9 +1,10 @@
 CXX = g++
+CC = gcc
 AS = nasm
 LD = ld
-
 # Add -fno-stack-protector to disable stack protection
-CXXFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector
+CXXFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector -I./src/fatfs
+CFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-stack-protector -I./src/fatfs
 ASFLAGS = -f elf32
 LDFLAGS = -m elf_i386 -T linker.ld
 
@@ -14,10 +15,14 @@ FS_SRC = src/filesystem.cpp
 NANO_SRC = src/vnano.cpp
 DISK_DRIVER_SRC = src/disk_driver.cpp
 PARTITION_SRC = src/partition_manager.cpp
-FAT32_SRC = src/fat32.cpp
+FAT32_SRC = src/fat32_modified.cpp
+FATFS_INTEGRATION_SRC = src/fatfs_integration.cpp
 INSTALLER_SRC = src/real_installer.cpp
 KEYBOARD_SRC = src/keyboard.cpp
 BOOT_SRC = src/boot.s
+STRING_UTILS_SRC = src/string_utils.c
+
+# Build directory
 BUILD_DIR = build
 ISO_DIR = iso
 GRUB_DIR = grub
@@ -50,14 +55,21 @@ $(BUILD_DIR)/partition_manager.o: $(PARTITION_SRC)
 $(BUILD_DIR)/fat32.o: $(FAT32_SRC)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+$(BUILD_DIR)/fatfs_integration.o: $(FATFS_INTEGRATION_SRC)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 $(BUILD_DIR)/real_installer.o: $(INSTALLER_SRC)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/keyboard.o: $(KEYBOARD_SRC)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(KERNEL_ELF): $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o linker.ld
-	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o
+$(BUILD_DIR)/string_utils.o: $(STRING_UTILS_SRC)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Link everything together - Removed FatFs objects
+$(KERNEL_ELF): $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/fatfs_integration.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/string_utils.o linker.ld
+	$(LD) $(LDFLAGS) -o $@ $(BUILD_DIR)/boot.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/vshell.o $(BUILD_DIR)/filesystem.o $(BUILD_DIR)/vnano.o $(BUILD_DIR)/disk_driver.o $(BUILD_DIR)/partition_manager.o $(BUILD_DIR)/fat32.o $(BUILD_DIR)/fatfs_integration.o $(BUILD_DIR)/real_installer.o $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/string_utils.o
 
 iso: all
 	mkdir -p $(ISO_DIR)/boot/grub
