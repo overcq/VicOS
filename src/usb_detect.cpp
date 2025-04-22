@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
@@ -12,30 +13,30 @@ void kprint(const char* str);
 #define USB_CLASS_MASS_STORAGE 0x08
 
 // I/O port functions for PCI
-static inline void outl(uint16_t port, uint32_t val) {
+static inline void outl(vic_uint16 port, vic_uint32 val) {
     asm volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint32_t inl(uint16_t port) {
-    uint32_t ret;
+static inline vic_uint32 inl(vic_uint16 port) {
+    vic_uint32 ret;
     asm volatile ("inl %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
 
 // Structure for USB device information
 struct USBDevice {
-    uint16_t vendor_id;
-    uint16_t device_id;
-    uint8_t class_code;
-    uint8_t subclass_code;
-    uint8_t protocol;
+    vic_uint16 vendor_id;
+    vic_uint16 device_id;
+    vic_uint8 class_code;
+    vic_uint8 subclass_code;
+    vic_uint8 protocol;
     bool is_mass_storage;
     char vendor_name[32];
     char device_name[32];
 };
 
 // Known USB vendor names (simplified mapping)
-const char* get_vendor_name(uint16_t vendor_id) {
+const char* get_vendor_name(vic_uint16 vendor_id) {
     switch (vendor_id) {
         case 0x8086: return "Intel";
         case 0x1022: return "AMD";
@@ -58,39 +59,39 @@ const char* get_vendor_name(uint16_t vendor_id) {
 }
 
 // Read PCI configuration space
-uint32_t pci_read_config(uint8_t bus, uint8_t device, uint8_t func, uint8_t offset) {
-    uint32_t address = 0x80000000 | (bus << 16) | (device << 11) | (func << 8) | (offset & 0xFC);
+vic_uint32 pci_read_config(vic_uint8 bus, vic_uint8 device, vic_uint8 func, vic_uint8 offset) {
+    vic_uint32 address = 0x80000000 | (bus << 16) | (device << 11) | (func << 8) | (offset & 0xFC);
     outl(PCI_CONFIG_ADDRESS, address);
     return inl(PCI_CONFIG_DATA);
 }
 
 // Check if a PCI device exists
-bool pci_device_exists(uint8_t bus, uint8_t device, uint8_t func) {
-    uint32_t vendor = pci_read_config(bus, device, func, 0) & 0xFFFF;
+bool pci_device_exists(vic_uint8 bus, vic_uint8 device, vic_uint8 func) {
+    vic_uint32 vendor = pci_read_config(bus, device, func, 0) & 0xFFFF;
     return vendor != 0xFFFF;
 }
 
 // Get the class code of a PCI device
-uint8_t pci_get_class(uint8_t bus, uint8_t device, uint8_t func) {
-    uint32_t class_reg = pci_read_config(bus, device, func, 0x08);
+vic_uint8 pci_get_class(vic_uint8 bus, vic_uint8 device, vic_uint8 func) {
+    vic_uint32 class_reg = pci_read_config(bus, device, func, 0x08);
     return (class_reg >> 24) & 0xFF;
 }
 
 // Get the subclass code of a PCI device
-uint8_t pci_get_subclass(uint8_t bus, uint8_t device, uint8_t func) {
-    uint32_t class_reg = pci_read_config(bus, device, func, 0x08);
+vic_uint8 pci_get_subclass(vic_uint8 bus, vic_uint8 device, vic_uint8 func) {
+    vic_uint32 class_reg = pci_read_config(bus, device, func, 0x08);
     return (class_reg >> 16) & 0xFF;
 }
 
 // Get the vendor ID of a PCI device
-uint16_t pci_get_vendor(uint8_t bus, uint8_t device, uint8_t func) {
-    uint32_t vendor_dev = pci_read_config(bus, device, func, 0x00);
+vic_uint16 pci_get_vendor(vic_uint8 bus, vic_uint8 device, vic_uint8 func) {
+    vic_uint32 vendor_dev = pci_read_config(bus, device, func, 0x00);
     return vendor_dev & 0xFFFF;
 }
 
 // Get the device ID of a PCI device
-uint16_t pci_get_device_id(uint8_t bus, uint8_t device, uint8_t func) {
-    uint32_t vendor_dev = pci_read_config(bus, device, func, 0x00);
+vic_uint16 pci_get_device_id(vic_uint8 bus, vic_uint8 device, vic_uint8 func) {
+    vic_uint32 vendor_dev = pci_read_config(bus, device, func, 0x00);
     return (vendor_dev >> 16) & 0xFFFF;
 }
 
@@ -101,20 +102,20 @@ int detect_usb_devices(USBDevice* devices, int max_devices) {
     kprint("Scanning for USB controllers...\n");
 
     // Loop through all PCI devices looking for USB controllers
-    for (uint16_t bus = 0; bus < 256; bus++) {
-        for (uint8_t device = 0; device < 32; device++) {
-            for (uint8_t func = 0; func < 8; func++) {
+    for (vic_uint16 bus = 0; bus < 256; bus++) {
+        for (vic_uint8 device = 0; device < 32; device++) {
+            for (vic_uint8 func = 0; func < 8; func++) {
                 if (!pci_device_exists(bus, device, func)) {
                     continue;
                 }
 
-                uint8_t class_code = pci_get_class(bus, device, func);
-                uint8_t subclass = pci_get_subclass(bus, device, func);
+                vic_uint8 class_code = pci_get_class(bus, device, func);
+                vic_uint8 subclass = pci_get_subclass(bus, device, func);
 
                 // Check if this is a USB controller (class 0x0C, subclass 0x03)
                 if (class_code == 0x0C && subclass == 0x03) {
-                    uint16_t vendor_id = pci_get_vendor(bus, device, func);
-                    uint16_t device_id = pci_get_device_id(bus, device, func);
+                    vic_uint16 vendor_id = pci_get_vendor(bus, device, func);
+                    vic_uint16 device_id = pci_get_device_id(bus, device, func);
 
                     kprint("Found USB controller: ");
                     kprint(get_vendor_name(vendor_id));

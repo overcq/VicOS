@@ -18,7 +18,7 @@ void* ff_memalloc (	/* Returns pointer to the allocated memory block (null if no
 	UINT msize		/* Number of bytes to allocate */
 )
 {
-	return malloc((size_t)msize);	/* Allocate a new memory block */
+	return malloc((vic_size_t)msize);	/* Allocate a new memory block */
 }
 
 

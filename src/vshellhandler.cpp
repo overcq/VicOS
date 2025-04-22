@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations from kernel.cpp
@@ -9,8 +10,8 @@ extern "C" void clear_screen();
 void fs_init();
 bool fs_cd(const char* path);
 void fs_ls(const char* path);
-uint32_t fs_mkdir(const char* path);
-uint32_t fs_touch(const char* path, const char* content);
+vic_uint32 fs_mkdir(const char* path);
+vic_uint32 fs_touch(const char* path, const char* content);
 const char* fs_read(const char* path);
 const char* fs_pwd();
 
@@ -18,8 +19,8 @@ const char* fs_pwd();
 int fatfs_initialize();
 int fatfs_mkdir(const char* path);
 void fatfs_list_directory(const char* path);
-int fatfs_write_file(const char* path, const char* content, size_t size);
-int fatfs_read_file(const char* path, char* buffer, size_t buffer_size, size_t* bytes_read);
+int fatfs_write_file(const char* path, const char* content, vic_size_t size);
+int fatfs_read_file(const char* path, char* buffer, vic_size_t buffer_size, vic_size_t* bytes_read);
 
 // Forward declaration from vnano.cpp
 void process_vnano(const char* command);
@@ -53,8 +54,8 @@ bool str_starts_with(const char* str, const char* prefix) {
 }
 
 // Renamed function to avoid conflict with kernel.cpp
-size_t vsh_strlen(const char* str) {
-    size_t len = 0;
+vic_size_t vsh_strlen(const char* str) {
+    vic_size_t len = 0;
     while (str[len]) {
         len++;
     }
@@ -62,7 +63,7 @@ size_t vsh_strlen(const char* str) {
 }
 
 // Extract n-th argument from a command line
-void get_argument(const char* command, int arg_num, char* buffer, size_t buffer_size) {
+void get_argument(const char* command, int arg_num, char* buffer, vic_size_t buffer_size) {
     // Skip leading spaces
     while (*command == ' ') {
         command++;
@@ -92,7 +93,7 @@ void get_argument(const char* command, int arg_num, char* buffer, size_t buffer_
     }
 
     // Extract the argument
-    size_t i = 0;
+    vic_size_t i = 0;
     while (*command && *command != ' ' && i < buffer_size - 1) {
         buffer[i++] = *command++;
     }
@@ -170,7 +171,7 @@ void process_cat(const char* command) {
 
     if (using_fatfs) {
         // Use FatFS to read the file
-        size_t bytes_read;
+        vic_size_t bytes_read;
         int result = fatfs_read_file(filename, file_read_buffer, MAX_FILE_BUFFER, &bytes_read);
 
         if (result < 0) {
@@ -281,7 +282,7 @@ void process_mkdir(const char* command) {
         }
     } else {
         // Use in-memory filesystem
-        if (fs_mkdir(dirname) == (uint32_t)-1) {
+        if (fs_mkdir(dirname) == (vic_uint32)-1) {
             kprint("Error: Failed to create directory: ");
             kprint(dirname);
             kprint("\n");

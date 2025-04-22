@@ -1,12 +1,13 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
 void kprint(const char* str);
 void kputchar(char c);  // Add this forward declaration
-int disk_read_sector(uint32_t lba, uint8_t* buffer);
-int disk_write_sector(uint32_t lba, const uint8_t* buffer);
-uint32_t disk_get_size();
+int disk_read_sector(vic_uint32 lba, vic_uint8* buffer);
+int disk_write_sector(vic_uint32 lba, const vic_uint8* buffer);
+vic_uint32 disk_get_size();
 
 // Partition types
 #define PART_TYPE_EMPTY     0x00
@@ -16,29 +17,29 @@ uint32_t disk_get_size();
 
 // MBR structure
 struct MBRPartitionEntry {
-    uint8_t bootable;       // 0x80 = bootable, 0x00 = not bootable
-    uint8_t start_head;     // CHS addressing
-    uint8_t start_sector;   // CHS addressing
-    uint8_t start_cylinder; // CHS addressing
-    uint8_t system_id;      // Partition type
-    uint8_t end_head;       // CHS addressing
-    uint8_t end_sector;     // CHS addressing
-    uint8_t end_cylinder;   // CHS addressing
-    uint32_t start_lba;     // LBA of first sector
-    uint32_t sector_count;  // Number of sectors
+    vic_uint8 bootable;       // 0x80 = bootable, 0x00 = not bootable
+    vic_uint8 start_head;     // CHS addressing
+    vic_uint8 start_sector;   // CHS addressing
+    vic_uint8 start_cylinder; // CHS addressing
+    vic_uint8 system_id;      // Partition type
+    vic_uint8 end_head;       // CHS addressing
+    vic_uint8 end_sector;     // CHS addressing
+    vic_uint8 end_cylinder;   // CHS addressing
+    vic_uint32 start_lba;     // LBA of first sector
+    vic_uint32 sector_count;  // Number of sectors
 } __attribute__((packed));
 
 struct MBR {
-    uint8_t bootstrap[446];
+    vic_uint8 bootstrap[446];
     MBRPartitionEntry partitions[4];
-    uint16_t signature;     // 0xAA55
+    vic_uint16 signature;     // 0xAA55
 } __attribute__((packed));
 
 // Convert LBA to CHS
-void lba_to_chs(uint32_t lba, uint8_t* head, uint8_t* sector, uint8_t* cylinder) {
+void lba_to_chs(vic_uint32 lba, vic_uint8* head, vic_uint8* sector, vic_uint8* cylinder) {
     // Use a simplified approach with fixed geometry
-    const uint8_t heads_per_cylinder = 16;
-    const uint8_t sectors_per_track = 63;
+    const vic_uint8 heads_per_cylinder = 16;
+    const vic_uint8 sectors_per_track = 63;
 
     *head = (lba / sectors_per_track) % heads_per_cylinder;
     *sector = (lba % sectors_per_track) + 1;
@@ -47,7 +48,7 @@ void lba_to_chs(uint32_t lba, uint8_t* head, uint8_t* sector, uint8_t* cylinder)
 
 // Read the MBR
 int read_mbr(MBR* mbr) {
-    uint8_t sector[512];
+    vic_uint8 sector[512];
 
     if (disk_read_sector(0, sector) < 0) {
         kprint("Failed to read MBR\n");
@@ -55,8 +56,8 @@ int read_mbr(MBR* mbr) {
     }
 
     // Copy sector data to MBR structure
-    for (size_t i = 0; i < 512; i++) {
-        ((uint8_t*)mbr)[i] = sector[i];
+    for (vic_size_t i = 0; i < 512; i++) {
+        ((vic_uint8*)mbr)[i] = sector[i];
     }
 
     // Check MBR signature
@@ -70,11 +71,11 @@ int read_mbr(MBR* mbr) {
 
 // Write the MBR
 int write_mbr(const MBR* mbr) {
-    uint8_t sector[512];
+    vic_uint8 sector[512];
 
     // Copy MBR structure to sector data
-    for (size_t i = 0; i < 512; i++) {
-        sector[i] = ((uint8_t*)mbr)[i];
+    for (vic_size_t i = 0; i < 512; i++) {
+        sector[i] = ((vic_uint8*)mbr)[i];
     }
 
     if (disk_write_sector(0, sector) < 0) {
@@ -90,8 +91,8 @@ int create_partition_table() {
     MBR mbr;
 
     // Clear the MBR
-    for (size_t i = 0; i < sizeof(MBR); i++) {
-        ((uint8_t*)&mbr)[i] = 0;
+    for (vic_size_t i = 0; i < sizeof(MBR); i++) {
+        ((vic_uint8*)&mbr)[i] = 0;
     }
 
     // Set MBR signature
@@ -121,7 +122,7 @@ int create_vicos_partition() {
     }
 
     // Get the disk size in sectors
-    uint32_t total_sectors = disk_get_size();
+    vic_uint32 total_sectors = disk_get_size();
     if (total_sectors == 0) {
         kprint("Failed to get disk size\n");
         return -1;
@@ -214,7 +215,7 @@ void print_partition_table() {
         // Simple conversion to string
         char lba_str[16];
         int idx = 0;
-        uint32_t temp = part->start_lba;
+        vic_uint32 temp = part->start_lba;
         do {
             lba_str[idx++] = '0' + (temp % 10);
             temp /= 10;
@@ -232,7 +233,7 @@ void print_partition_table() {
 
         kprint("  Size: ");
         // Calculate size in MB
-        uint32_t size_mb = part->sector_count / 2048; // 512 bytes/sector * 2048 = 1MB
+        vic_uint32 size_mb = part->sector_count / 2048; // 512 bytes/sector * 2048 = 1MB
         idx = 0;
         temp = size_mb;
         do {
@@ -253,7 +254,7 @@ void print_partition_table() {
 }
 
 // Get partition information
-int get_partition_info(int partition_num, uint32_t* start_lba, uint32_t* sector_count) {
+int get_partition_info(int partition_num, vic_uint32* start_lba, vic_uint32* sector_count) {
     if (partition_num < 1 || partition_num > 4) {
         return -1;
     }

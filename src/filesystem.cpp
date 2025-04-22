@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
@@ -29,9 +30,9 @@ char current_path[FS_MAX_PATH] = "/";
 // File/directory structure
 struct FSNode {
     char name[FS_MAX_FILENAME];
-    uint8_t type;
-    uint32_t size;
-    uint32_t parent_index; // Index of parent directory
+    vic_uint8 type;
+    vic_uint32 size;
+    vic_uint32 parent_index; // Index of parent directory
     bool used;             // Whether this entry is in use
 
     // For files, this holds the content
@@ -43,11 +44,11 @@ struct FSNode {
 FSNode filesystem[FS_MAX_FILES + FS_MAX_DIRS];
 
 // Current directory index
-uint32_t current_dir = 0;
+vic_uint32 current_dir = 0;
 
 // Forward declarations of functions to resolve circular dependencies
-uint32_t fs_mkdir(const char* path);
-uint32_t fs_touch(const char* path, const char* content);
+vic_uint32 fs_mkdir(const char* path);
+vic_uint32 fs_touch(const char* path, const char* content);
 
 // String operations
 bool fs_strcmp(const char* s1, const char* s2) {
@@ -65,8 +66,8 @@ void fs_strcpy(char* dest, const char* src) {
     *dest = '\0';
 }
 
-size_t fs_strlen(const char* str) {
-    size_t len = 0;
+vic_size_t fs_strlen(const char* str) {
+    vic_size_t len = 0;
     while (str[len]) {
         len++;
     }
@@ -92,7 +93,7 @@ int fs_find_node(const char* path) {
     }
 
     // Handle absolute vs relative path
-    uint32_t start_dir;
+    vic_uint32 start_dir;
     const char* path_ptr = path;
 
     if (path[0] == '/') {
@@ -121,7 +122,7 @@ int fs_find_node(const char* path) {
 
     // Parse path components
     char component[FS_MAX_FILENAME];
-    uint32_t current_index = start_dir;
+    vic_uint32 current_index = start_dir;
 
     while (*path_ptr) {
         // Extract next component
@@ -154,7 +155,7 @@ int fs_find_node(const char* path) {
 
         // Search for the component in the current directory
         bool found = false;
-        for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+        for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
             if (filesystem[i].used &&
                 filesystem[i].parent_index == current_index &&
                 fs_strcmp(filesystem[i].name, component)) {
@@ -174,7 +175,7 @@ int fs_find_node(const char* path) {
 }
 
 // Get the full path of a node
-void fs_get_path(uint32_t node_index, char* path_buffer) {
+void fs_get_path(vic_uint32 node_index, char* path_buffer) {
     if (node_index == 0) {
         // Root directory
         path_buffer[0] = '/';
@@ -185,7 +186,7 @@ void fs_get_path(uint32_t node_index, char* path_buffer) {
     // Build path by traversing up to root
     path_buffer[0] = '\0';
     char temp[FS_MAX_PATH];
-    uint32_t current = node_index;
+    vic_uint32 current = node_index;
 
     while (current != 0) {
         // Add current node name
@@ -208,7 +209,7 @@ void fs_get_path(uint32_t node_index, char* path_buffer) {
 // Initialize the filesystem
 void fs_init() {
     // Initialize all entries as unused
-    for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+    for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
         filesystem[i].used = false;
     }
 
@@ -291,9 +292,9 @@ void fs_ls(const char* path) {
     bool found = false;
 
     // First, list directories
-    for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+    for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
         if (filesystem[i].used &&
-            filesystem[i].parent_index == (uint32_t)dir_index &&
+            filesystem[i].parent_index == (vic_uint32)dir_index &&
             filesystem[i].type == FS_TYPE_DIRECTORY) {
 
             found = true;
@@ -304,9 +305,9 @@ void fs_ls(const char* path) {
     }
 
     // Then, list files
-    for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+    for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
         if (filesystem[i].used &&
-            filesystem[i].parent_index == (uint32_t)dir_index &&
+            filesystem[i].parent_index == (vic_uint32)dir_index &&
             filesystem[i].type == FS_TYPE_FILE) {
 
             found = true;
@@ -316,7 +317,7 @@ void fs_ls(const char* path) {
 
         // Convert size to string (simple implementation)
         char size_str[16];
-        uint32_t size = filesystem[i].size;
+        vic_uint32 size = filesystem[i].size;
         if (size == 0) {
             size_str[0] = '0';
             size_str[1] = '\0';
@@ -347,7 +348,7 @@ void fs_ls(const char* path) {
 }
 
 // Create a directory
-uint32_t fs_mkdir(const char* path) {
+vic_uint32 fs_mkdir(const char* path) {
     // Parse path to get parent directory and new directory name
     char parent_path[FS_MAX_PATH];
     char dir_name[FS_MAX_FILENAME];
@@ -371,8 +372,8 @@ uint32_t fs_mkdir(const char* path) {
         fs_strcpy(dir_name, last_slash + 1);
     } else {
         // Copy parent path
-        size_t parent_len = last_slash - path;
-        for (size_t i = 0; i < parent_len; i++) {
+        vic_size_t parent_len = last_slash - path;
+        for (vic_size_t i = 0; i < parent_len; i++) {
             parent_path[i] = path[i];
         }
         parent_path[parent_len] = '\0';
@@ -390,7 +391,7 @@ uint32_t fs_mkdir(const char* path) {
     // Check if the directory name is empty
     if (dir_name[0] == '\0') {
         kprint("Error: Directory name cannot be empty\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Check if parent directory exists
@@ -399,14 +400,14 @@ uint32_t fs_mkdir(const char* path) {
         kprint("Error: Parent directory not found: ");
         kprint(parent_path);
         kprint("\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     if (filesystem[parent_index].type != FS_TYPE_DIRECTORY) {
         kprint("Error: Parent is not a directory: ");
         kprint(parent_path);
         kprint("\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Check if directory already exists
@@ -421,21 +422,21 @@ uint32_t fs_mkdir(const char* path) {
         kprint("Error: Directory already exists: ");
         kprint(full_path);
         kprint("\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Find free slot for the new directory
-    uint32_t dir_index = (uint32_t)-1;
-    for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+    vic_uint32 dir_index = (vic_uint32)-1;
+    for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
         if (!filesystem[i].used) {
             dir_index = i;
             break;
         }
     }
 
-    if (dir_index == (uint32_t)-1) {
+    if (dir_index == (vic_uint32)-1) {
         kprint("Error: Filesystem full, cannot create directory\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Create the directory
@@ -449,7 +450,7 @@ uint32_t fs_mkdir(const char* path) {
 }
 
 // Create or update a file
-uint32_t fs_touch(const char* path, const char* content) {
+vic_uint32 fs_touch(const char* path, const char* content) {
     // Parse path to get parent directory and filename
     char parent_path[FS_MAX_PATH];
     char file_name[FS_MAX_FILENAME];
@@ -473,8 +474,8 @@ uint32_t fs_touch(const char* path, const char* content) {
         fs_strcpy(file_name, last_slash + 1);
     } else {
         // Copy parent path
-        size_t parent_len = last_slash - path;
-        for (size_t i = 0; i < parent_len; i++) {
+        vic_size_t parent_len = last_slash - path;
+        for (vic_size_t i = 0; i < parent_len; i++) {
             parent_path[i] = path[i];
         }
         parent_path[parent_len] = '\0';
@@ -492,7 +493,7 @@ uint32_t fs_touch(const char* path, const char* content) {
     // Check if the file name is empty
     if (file_name[0] == '\0') {
         kprint("Error: File name cannot be empty\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Check if parent directory exists
@@ -501,14 +502,14 @@ uint32_t fs_touch(const char* path, const char* content) {
         kprint("Error: Parent directory not found: ");
         kprint(parent_path);
         kprint("\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     if (filesystem[parent_index].type != FS_TYPE_DIRECTORY) {
         kprint("Error: Parent is not a directory: ");
         kprint(parent_path);
         kprint("\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Check if file already exists
@@ -527,15 +528,15 @@ uint32_t fs_touch(const char* path, const char* content) {
             kprint("Error: Path exists but is not a file: ");
             kprint(full_path);
             kprint("\n");
-            return (uint32_t)-1;
+            return (vic_uint32)-1;
         }
 
         // Update file content if provided
         if (content) {
-            size_t content_len = fs_strlen(content);
+            vic_size_t content_len = fs_strlen(content);
             if (content_len >= FS_MAX_FILE_SIZE) {
                 kprint("Error: Content too large for file\n");
-                return (uint32_t)-1;
+                return (vic_uint32)-1;
             }
 
             fs_strcpy(filesystem[file_index].content, content);
@@ -546,17 +547,17 @@ uint32_t fs_touch(const char* path, const char* content) {
     }
 
     // Find free slot for the new file
-    uint32_t new_file_index = (uint32_t)-1;
-    for (uint32_t i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
+    vic_uint32 new_file_index = (vic_uint32)-1;
+    for (vic_uint32 i = 0; i < FS_MAX_FILES + FS_MAX_DIRS; i++) {
         if (!filesystem[i].used) {
             new_file_index = i;
             break;
         }
     }
 
-    if (new_file_index == (uint32_t)-1) {
+    if (new_file_index == (vic_uint32)-1) {
         kprint("Error: Filesystem full, cannot create file\n");
-        return (uint32_t)-1;
+        return (vic_uint32)-1;
     }
 
     // Create the file
@@ -567,11 +568,11 @@ uint32_t fs_touch(const char* path, const char* content) {
 
     // Set content if provided
     if (content) {
-        size_t content_len = fs_strlen(content);
+        vic_size_t content_len = fs_strlen(content);
         if (content_len >= FS_MAX_FILE_SIZE) {
             kprint("Error: Content too large for file\n");
             filesystem[new_file_index].used = false;
-            return (uint32_t)-1;
+            return (vic_uint32)-1;
         }
 
         fs_strcpy(filesystem[new_file_index].content, content);

@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declaration of VShell handler
@@ -6,23 +7,23 @@ void vshell_init();
 void vshell_execute_command(const char* command);
 
 // VGA buffer address
-volatile uint16_t* const VGA_MEMORY = (uint16_t*)0xB8000;
-const uint8_t VGA_WIDTH = 80;
-const uint8_t VGA_HEIGHT = 25;
-uint8_t cursor_x = 0;
-uint8_t cursor_y = 0;
+volatile vic_uint16* const VGA_MEMORY = (vic_uint16*)0xB8000;
+const vic_uint8 VGA_WIDTH = 80;
+const vic_uint8 VGA_HEIGHT = 25;
+vic_uint8 cursor_x = 0;
+vic_uint8 cursor_y = 0;
 
 // Command buffer
 char command_buffer[256];
 int command_position = 0;
 
 // IO port functions
-static inline void outb(uint16_t port, uint8_t val) {
+static inline void outb(vic_uint16 port, vic_uint8 val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
+static inline vic_uint8 inb(vic_uint16 port) {
+    vic_uint8 ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
@@ -85,15 +86,15 @@ void update_cursor() {
 
     // Tell VGA hardware the cursor position
     outb(0x3D4, 0x0F);
-    outb(0x3D5, (uint8_t)(position & 0xFF));
+    outb(0x3D5, (vic_uint8)(position & 0xFF));
     outb(0x3D4, 0x0E);
-    outb(0x3D5, (uint8_t)((position >> 8) & 0xFF));
+    outb(0x3D5, (vic_uint8)((position >> 8) & 0xFF));
 }
 
 // Clear the screen - now exported with extern "C"
 extern "C" void clear_screen() {
     // Black background, white text (blank)
-    const uint16_t blank = 0x0F00;
+    const vic_uint16 blank = 0x0F00;
 
     // Fill entire screen with blank characters
     for(int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
@@ -152,7 +153,7 @@ void kputchar(char c) {
     const unsigned int position = cursor_y * VGA_WIDTH + cursor_x;
 
     // Write character with white on black
-    VGA_MEMORY[position] = (uint16_t)c | 0x0F00;
+    VGA_MEMORY[position] = (vic_uint16)c | 0x0F00;
 
     // Move cursor
     cursor_x++;
@@ -167,7 +168,7 @@ void kputchar(char c) {
 
 // Print a string
 void kprint(const char* str) {
-    for (size_t i = 0; str[i] != '\0'; i++) {
+    for (vic_size_t i = 0; str[i] != '\0'; i++) {
         kputchar(str[i]);
     }
 }
@@ -285,7 +286,7 @@ void process_keypress() {
     }
 
     // Read scan code
-    uint8_t scancode = inb(KEYBOARD_DATA_PORT);
+    vic_uint8 scancode = inb(KEYBOARD_DATA_PORT);
 
     // Handle extended keys (E0 prefix)
     if (scancode == 0xE0) {

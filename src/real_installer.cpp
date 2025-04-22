@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
@@ -9,12 +10,12 @@ extern "C" void clear_screen();
 // Forward declarations for disk functions
 int disk_initialize();
 void disk_detect();
-int disk_get_drive_info(int drive_index, bool* exists, char* model, uint32_t* size_mb);
+int disk_get_drive_info(int drive_index, bool* exists, char* model, vic_uint32* size_mb);
 bool set_active_drive(int drive_index);
 int create_vicos_partition();
 int create_fat32_filesystem();
 int create_directory(const char* dirname);
-int create_file_with_content(const char* filename, const void* data, uint32_t size);
+int create_file_with_content(const char* filename, const void* data, vic_uint32 size);
 
 // Forward declaration for keyboard input
 extern "C" char keyboard_read_char();
@@ -26,7 +27,7 @@ struct StorageDevice {
     bool detected;
     char name[8];      // e.g., "hda", "sdb"
     char model[41];    // Model string from device
-    uint32_t size_mb;  // Size in MB
+    vic_uint32 size_mb;  // Size in MB
     int drive_index;   // Index in ATA array
 };
 
@@ -42,7 +43,7 @@ void ri_strcpy(char* dest, const char* src) {
 }
 
 // Simple conversion of number to string
-void int_to_str(uint32_t num, char* str) {
+void int_to_str(vic_uint32 num, char* str) {
     // Special case for zero
     if (num == 0) {
         str[0] = '0';
@@ -85,7 +86,7 @@ void scan_storage_devices() {
     for (int i = 0; i < 4; i++) {  // Up to 4 ATA drives
         bool exists;
         char model[41];
-        uint32_t size_mb;
+        vic_uint32 size_mb;
 
         if (disk_get_drive_info(i, &exists, model, &size_mb) == 0 && exists) {
             // This drive exists, add it to our list

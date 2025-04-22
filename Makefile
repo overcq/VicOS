@@ -4,8 +4,8 @@ AS = nasm
 LD = ld
 
 # Add the custom include path before anything else
-CXXFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector -I./src -I./src/fatfs
-CFLAGS = -m32 -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-stack-protector -I./src -I./src/fatfs
+CXXFLAGS = -m32 -mgeneral-regs-only -mno-red-zone -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-exceptions -fno-rtti -fno-stack-protector -I./src -I./src/fatfs
+CFLAGS = -m32 -mgeneral-regs-only -mno-red-zone -ffreestanding -fno-pic -fno-pie -O0 -Wall -Wextra -fno-stack-protector -I./src -I./src/fatfs
 ASFLAGS = -f elf32
 LDFLAGS = -m elf_i386 -T linker.ld
 

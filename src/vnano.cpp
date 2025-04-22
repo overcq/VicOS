@@ -1,4 +1,5 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations from kernel.cpp
@@ -8,16 +9,16 @@ extern "C" void clear_screen();
 
 // Forward declarations for filesystem
 const char* fs_read(const char* path);
-uint32_t fs_touch(const char* path, const char* content);
+vic_uint32 fs_touch(const char* path, const char* content);
 
 // Editor state
 #define VNANO_MAX_BUFFER_SIZE 4096
 char editor_buffer[VNANO_MAX_BUFFER_SIZE];
-size_t editor_length = 0;
-size_t editor_cursor = 0;
-size_t editor_row = 0;
-size_t editor_col = 0;
-size_t editor_scroll = 0;
+vic_size_t editor_length = 0;
+vic_size_t editor_cursor = 0;
+vic_size_t editor_row = 0;
+vic_size_t editor_col = 0;
+vic_size_t editor_scroll = 0;
 char editor_filename[256];
 bool editor_modified = false;
 
@@ -26,8 +27,8 @@ bool editor_modified = false;
 #define VNANO_SCREEN_HEIGHT 25
 
 // Find length of a string
-size_t vnano_strlen(const char* str) {
-    size_t i = 0;
+vic_size_t vnano_strlen(const char* str) {
+    vic_size_t i = 0;
     while (str[i] != '\0') i++;
     return i;
 }
@@ -57,12 +58,12 @@ void vnano_init(const char* filename) {
     const char* content = fs_read(filename);
     if (content) {
         // Copy file content to editor buffer
-        size_t content_len = vnano_strlen(content);
+        vic_size_t content_len = vnano_strlen(content);
         if (content_len >= VNANO_MAX_BUFFER_SIZE) {
             content_len = VNANO_MAX_BUFFER_SIZE - 1;
         }
 
-        for (size_t i = 0; i < content_len; i++) {
+        for (vic_size_t i = 0; i < content_len; i++) {
             editor_buffer[i] = content[i];
         }
 
@@ -104,7 +105,7 @@ void vnano_update_cursor_position() {
     editor_row = 2; // Start after the header
     editor_col = 0;
 
-    for (size_t i = 0; i < editor_cursor; i++) {
+    for (vic_size_t i = 0; i < editor_cursor; i++) {
         if (editor_buffer[i] == '\n') {
             editor_row++;
             editor_col = 0;
@@ -128,10 +129,10 @@ void vnano_refresh() {
     kprint("\n\n");
 
     // Display file content
-    size_t row = 2; // Start after the header
-    size_t col = 0;
+    vic_size_t row = 2; // Start after the header
+    vic_size_t col = 0;
 
-    for (size_t i = 0; i < editor_length; i++) {
+    for (vic_size_t i = 0; i < editor_length; i++) {
         if (editor_buffer[i] == '\n') {
             kputchar('\n');
             row++;
@@ -172,7 +173,7 @@ void vnano_insert_char(char c) {
     }
 
     // Shift characters after cursor
-    for (size_t i = editor_length; i > editor_cursor; i--) {
+    for (vic_size_t i = editor_length; i > editor_cursor; i--) {
         editor_buffer[i] = editor_buffer[i - 1];
     }
 
@@ -193,7 +194,7 @@ void vnano_backspace() {
     }
 
     // Shift characters after cursor
-    for (size_t i = editor_cursor - 1; i < editor_length; i++) {
+    for (vic_size_t i = editor_cursor - 1; i < editor_length; i++) {
         editor_buffer[i] = editor_buffer[i + 1];
     }
 
@@ -220,13 +221,13 @@ void vnano_move_cursor(int direction) {
         case 2: // Up
         {
             // Find start of current line
-            size_t line_start = editor_cursor;
+            vic_size_t line_start = editor_cursor;
             while (line_start > 0 && editor_buffer[line_start - 1] != '\n') {
                 line_start--;
             }
 
             // Find start of previous line
-            size_t prev_line_start = line_start;
+            vic_size_t prev_line_start = line_start;
             if (prev_line_start > 0) {
                 prev_line_start--; // Skip the newline
                 while (prev_line_start > 0 && editor_buffer[prev_line_start - 1] != '\n') {
@@ -235,10 +236,10 @@ void vnano_move_cursor(int direction) {
             }
 
             // Calculate column position
-            size_t current_col = editor_cursor - line_start;
+            vic_size_t current_col = editor_cursor - line_start;
 
             // Move to same column in previous line
-            size_t prev_line_length = line_start - prev_line_start - 1;
+            vic_size_t prev_line_length = line_start - prev_line_start - 1;
             if (prev_line_start < line_start) { // If we found a previous line
                 if (current_col <= prev_line_length) {
                     editor_cursor = prev_line_start + current_col;
@@ -251,19 +252,19 @@ void vnano_move_cursor(int direction) {
         case 3: // Down
         {
             // Find start of current line
-            size_t line_start = editor_cursor;
+            vic_size_t line_start = editor_cursor;
             while (line_start > 0 && editor_buffer[line_start - 1] != '\n') {
                 line_start--;
             }
 
             // Find end of current line
-            size_t line_end = editor_cursor;
+            vic_size_t line_end = editor_cursor;
             while (line_end < editor_length && editor_buffer[line_end] != '\n') {
                 line_end++;
             }
 
             // Find end of next line
-            size_t next_line_end = line_end;
+            vic_size_t next_line_end = line_end;
             if (next_line_end < editor_length) {
                 next_line_end++; // Skip the newline
                 while (next_line_end < editor_length && editor_buffer[next_line_end] != '\n') {
@@ -272,12 +273,12 @@ void vnano_move_cursor(int direction) {
             }
 
             // Calculate column position
-            size_t current_col = editor_cursor - line_start;
+            vic_size_t current_col = editor_cursor - line_start;
 
             // Move to same column in next line
             if (line_end < editor_length) { // If we found a next line
-                size_t next_line_start = line_end + 1;
-                size_t next_line_length = next_line_end - next_line_start;
+                vic_size_t next_line_start = line_end + 1;
+                vic_size_t next_line_length = next_line_end - next_line_start;
 
                 if (current_col <= next_line_length) {
                     editor_cursor = next_line_start + current_col;
@@ -377,7 +378,7 @@ void process_vnano(const char* command) {
     }
 
     // Copy filename
-    size_t i = 0;
+    vic_size_t i = 0;
     while (*cmd_ptr && *cmd_ptr != ' ' && i < 255) {
         filename[i++] = *cmd_ptr++;
     }

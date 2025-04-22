@@ -2,7 +2,8 @@
 #define FATFS_INTEGRATION_H
 
 #include <stddef.h>
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,11 +25,11 @@ typedef enum {
 // Function declarations
 void fatfs_init(void);
 FRESULT fatfs_mkdir(const char* path);
-FRESULT fatfs_write_file(const char* path, const char* content, size_t len);
-FRESULT fatfs_read_file(const char* path, char* buffer, size_t buffer_size, size_t* bytes_read);
+FRESULT fatfs_write_file(const char* path, const char* content, vic_size_t len);
+FRESULT fatfs_read_file(const char* path, char* buffer, vic_size_t buffer_size, vic_size_t* bytes_read);
 FRESULT fatfs_ls(const char* path);
 FRESULT fatfs_cd(const char* path);
-FRESULT fatfs_pwd(char* buffer, size_t size);
+FRESULT fatfs_pwd(char* buffer, vic_size_t size);
 void process_fatfs_install(const char* args);
 
 #ifdef __cplusplus

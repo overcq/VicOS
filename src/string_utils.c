@@ -2,11 +2,11 @@
 #include <stdarg.h>
 #include <stddef.h>
 
-int snprintf(char* str, size_t size, const char* format, ...) {
+int snprintf(char* str, vic_size_t size, const char* format, ...) {
     va_list args;
     va_start(args, format);
     
-    size_t count = 0;
+    vic_size_t count = 0;
     
     while (*format && count < size - 1) {
         if (*format == '%') {

@@ -1,16 +1,17 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
 void kputchar(char c);
 
 // I/O port functions
-static inline void outb(uint16_t port, uint8_t val) {
+static inline void outb(vic_uint16 port, vic_uint8 val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
+static inline vic_uint8 inb(vic_uint16 port) {
+    vic_uint8 ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
@@ -41,7 +42,7 @@ bool keyboard_has_key() {
 
 // Waits for a keypress and returns the ASCII character
 extern "C" char keyboard_read_char() {
-    uint8_t scancode;
+    vic_uint8 scancode;
     char c = 0;
 
     // Wait for a key to be pressed

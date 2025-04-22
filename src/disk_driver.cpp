@@ -1,16 +1,17 @@
-#include "stdint.h"
+#include <stdint.h>
+#include "vstdint.h"
 #include <stddef.h>
 
 // Forward declarations
 void kprint(const char* str);
 
 // I/O port functions
-static inline void outb(uint16_t port, uint8_t val) {
+static inline void outb(vic_uint16 port, vic_uint8 val) {
     asm volatile ("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-static inline uint8_t inb(uint16_t port) {
-    uint8_t ret;
+static inline vic_uint8 inb(vic_uint16 port) {
+    vic_uint8 ret;
     asm volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
     return ret;
 }
@@ -20,11 +21,11 @@ static inline void io_wait() {
     outb(0x80, 0);
 }
 
-static inline void insw(uint16_t port, void* addr, size_t count) {
+static inline void insw(vic_uint16 port, void* addr, vic_size_t count) {
     asm volatile ("rep insw" : "+D"(addr), "+c"(count) : "d"(port) : "memory");
 }
 
-static inline void outsw(uint16_t port, void* addr, size_t count) {
+static inline void outsw(vic_uint16 port, void* addr, vic_size_t count) {
     asm volatile ("rep outsw" : "+S"(addr), "+c"(count) : "d"(port) : "memory");
 }
 
@@ -82,7 +83,7 @@ static inline void outsw(uint16_t port, void* addr, size_t count) {
 struct DriveInfo {
     bool exists;
     char model[41];
-    uint32_t size_mb;
+    vic_uint32 size_mb;
     bool is_master;
     bool is_primary;
 };
@@ -93,10 +94,10 @@ DriveInfo detected_drives[MAX_DRIVES];
 int active_drive = 0;  // Currently active drive
 
 // Wait for BSY to clear
-bool ata_wait_not_busy(uint16_t base_port) {
+bool ata_wait_not_busy(vic_uint16 base_port) {
     // Wait up to 30 seconds for drive to be ready
     for (int i = 0; i < 30000; i++) {
-        uint8_t status = inb(base_port + 7);  // STATUS register
+        vic_uint8 status = inb(base_port + 7);  // STATUS register
         if (!(status & ATA_SR_BSY)) {
             return true;
         }
@@ -111,10 +112,10 @@ bool ata_wait_not_busy(uint16_t base_port) {
 }
 
 // Wait for DRQ to set
-bool ata_wait_drq(uint16_t base_port) {
+bool ata_wait_drq(vic_uint16 base_port) {
     // Wait up to 30 seconds for drive to be ready
     for (int i = 0; i < 30000; i++) {
-        uint8_t status = inb(base_port + 7);  // STATUS register
+        vic_uint8 status = inb(base_port + 7);  // STATUS register
         if (status & ATA_SR_DRQ) {
             return true;
         }
@@ -129,7 +130,7 @@ bool ata_wait_drq(uint16_t base_port) {
 }
 
 // Identify a drive
-bool ata_identify(uint16_t base_port, uint8_t drive_select, DriveInfo* drive_info) {
+bool ata_identify(vic_uint16 base_port, vic_uint8 drive_select, DriveInfo* drive_info) {
     // Select the drive
     outb(base_port + 6, drive_select);  // DRIVE/HEAD register
     io_wait();
@@ -151,7 +152,7 @@ bool ata_identify(uint16_t base_port, uint8_t drive_select, DriveInfo* drive_inf
     outb(base_port + 7, ATA_CMD_IDENTIFY);  // COMMAND register
 
     // Check if drive exists
-    uint8_t status = inb(base_port + 7);  // STATUS register
+    vic_uint8 status = inb(base_port + 7);  // STATUS register
     if (status == 0) {
         // Drive doesn't exist
         return false;
@@ -174,8 +175,8 @@ bool ata_identify(uint16_t base_port, uint8_t drive_select, DriveInfo* drive_inf
 
     if (error) {
         // Check if it might be an ATAPI device
-        uint8_t cl = inb(base_port + 4);  // LBA MID
-        uint8_t ch = inb(base_port + 5);  // LBA HI
+        vic_uint8 cl = inb(base_port + 4);  // LBA MID
+        vic_uint8 ch = inb(base_port + 5);  // LBA HI
 
         if ((cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96)) {
             // This is an ATAPI device, not a hard drive
@@ -187,7 +188,7 @@ bool ata_identify(uint16_t base_port, uint8_t drive_select, DriveInfo* drive_inf
     }
 
     // Read the identification data
-    uint16_t identify_data[256];
+    vic_uint16 identify_data[256];
     for (int i = 0; i < 256; i++) {
         identify_data[i] = inb(base_port) | (inb(base_port) << 8);
     }
@@ -211,7 +212,7 @@ bool ata_identify(uint16_t base_port, uint8_t drive_select, DriveInfo* drive_inf
 
     // Calculate size in MB
     // In modern drives, words 60-61 contain total LBA sectors
-    uint32_t sectors = identify_data[60] | (identify_data[61] << 16);
+    vic_uint32 sectors = identify_data[60] | (identify_data[61] << 16);
     drive_info->size_mb = sectors / 2048;  // 512 bytes/sector * 2048 = 1MB
 
     return true;
@@ -278,7 +279,7 @@ void detect_all_drives() {
 }
 
 // Convert number to string
-void num_to_str(uint32_t num, char* str) {
+void num_to_str(vic_uint32 num, char* str) {
     int i = 0;
 
     // Handle 0 case
@@ -352,10 +353,10 @@ bool set_active_drive(int drive_index) {
 }
 
 // Read a sector from the active drive
-int disk_read_sector(uint32_t lba, uint8_t* buffer) {
+int disk_read_sector(vic_uint32 lba, vic_uint8* buffer) {
     // Get the base port and drive select for the active drive
-    uint16_t base_port = detected_drives[active_drive].is_primary ? ATA_PRIMARY_DATA : ATA_SECONDARY_DATA;
-    uint8_t drive_select = detected_drives[active_drive].is_master ? ATA_MASTER : ATA_SLAVE;
+    vic_uint16 base_port = detected_drives[active_drive].is_primary ? ATA_PRIMARY_DATA : ATA_SECONDARY_DATA;
+    vic_uint8 drive_select = detected_drives[active_drive].is_master ? ATA_MASTER : ATA_SLAVE;
 
     // Select drive
     outb(base_port + 6, (drive_select | ((lba >> 24) & 0x0F)));  // DRIVE/HEAD register
@@ -383,7 +384,7 @@ int disk_read_sector(uint32_t lba, uint8_t* buffer) {
 
     // Read the data
     for (int i = 0; i < 256; i++) {
-        uint16_t data = inb(base_port) | (inb(base_port) << 8);
+        vic_uint16 data = inb(base_port) | (inb(base_port) << 8);
         buffer[i*2] = data & 0xFF;
         buffer[i*2 + 1] = (data >> 8) & 0xFF;
     }
@@ -392,10 +393,10 @@ int disk_read_sector(uint32_t lba, uint8_t* buffer) {
 }
 
 // Write a sector to the active drive
-int disk_write_sector(uint32_t lba, const uint8_t* buffer) {
+int disk_write_sector(vic_uint32 lba, const vic_uint8* buffer) {
     // Get the base port and drive select for the active drive
-    uint16_t base_port = detected_drives[active_drive].is_primary ? ATA_PRIMARY_DATA : ATA_SECONDARY_DATA;
-    uint8_t drive_select = detected_drives[active_drive].is_master ? ATA_MASTER : ATA_SLAVE;
+    vic_uint16 base_port = detected_drives[active_drive].is_primary ? ATA_PRIMARY_DATA : ATA_SECONDARY_DATA;
+    vic_uint8 drive_select = detected_drives[active_drive].is_master ? ATA_MASTER : ATA_SLAVE;
 
     // Select drive
     outb(base_port + 6, (drive_select | ((lba >> 24) & 0x0F)));  // DRIVE/HEAD register
@@ -423,7 +424,7 @@ int disk_write_sector(uint32_t lba, const uint8_t* buffer) {
 
     // Write the data
     for (int i = 0; i < 256; i++) {
-        uint16_t data = buffer[i*2] | (buffer[i*2 + 1] << 8);
+        vic_uint16 data = buffer[i*2] | (buffer[i*2 + 1] << 8);
         outb(base_port, data & 0xFF);
         outb(base_port, (data >> 8) & 0xFF);
     }
@@ -432,7 +433,7 @@ int disk_write_sector(uint32_t lba, const uint8_t* buffer) {
 }
 
 // Get drive information
-int disk_get_drive_info(int drive_index, bool* exists, char* model, uint32_t* size_mb) {
+int disk_get_drive_info(int drive_index, bool* exists, char* model, vic_uint32* size_mb) {
     if (drive_index < 0 || drive_index >= MAX_DRIVES) {
         return -1;
     }
@@ -455,7 +456,7 @@ int disk_get_drive_info(int drive_index, bool* exists, char* model, uint32_t* si
 }
 
 // Get size of the active drive in sectors
-uint32_t disk_get_size() {
+vic_uint32 disk_get_size() {
     if (!detected_drives[active_drive].exists) {
         return 0;
     }
