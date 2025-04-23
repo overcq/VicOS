@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "cmath": "cpp",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "cstdio": "cpp"
     }
 }

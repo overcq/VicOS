@@ -4,10 +4,9 @@
 #include <cstdio>
 
 // VERY IMPORTANT: wrap C headers correctly
-extern "C" {
-    #include "ff.h"
-    #include "diskio.h"
-}
+#include "ff.h"
+#include "diskio.h"
+
 
 // Define our low-level disk functions that interact with the hardware
 extern "C" {

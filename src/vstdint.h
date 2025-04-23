@@ -1,5 +1,5 @@
-#ifndef _VSTDINT_H
-#define _VSTDINT_H
+#ifndef VIC_STDINT_H
+#define VIC_STDINT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,4 +58,4 @@ typedef __PTRDIFF_TYPE__      vic_ptrdiff_t;
 }
 #endif
 
-#endif // _VSTDINT_H
+#endif // VIC_STDINT_H
